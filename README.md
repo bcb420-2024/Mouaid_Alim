@@ -8,7 +8,7 @@ Here is the Link to my [wiki page](https://github.com/bcb420-2024/Mouaid_Alim/wi
 
 # Assignment 1 File
 
-Here is the Link to my [Assignment 1 HTML file]([https://github.com/bcb420-2024/Mouaid_Alim/wiki](https://github.com/bcb420-2024/Mouaid_Alim/blob/main/Assignment%201/assignment-1.html)).
+Here is the Link to my [Assignment 1 HTML file](https://github.com/bcb420-2024/Mouaid_Alim/blob/main/Assignment%201/assignment-1.html).
 
 # License
 
