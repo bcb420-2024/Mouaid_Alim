@@ -1,0 +1,538 @@
+---
+title: "Assignment 1"
+author: "Mouaid Alim"
+date: ""
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+bibliography: [references.bib, packages.bib]
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Dataset Selection
+
+For this project I will be using the GEO dataset with acess number:
+GSE208637
+
+The original study from  @liu2023increased that generated the dataset, focused 
+on understanding
+the role of CD161-expressing CD8+ T cells in chronic Hepatitis B (HBV)
+infection. The research aimed to explore their
+profiles and changes during chronic HBV infection.
+
+The dataset was used in this study to analyze blood and liver tissue
+samples from chronic HBV patients. Specifically, it involved the
+characterization of CD161+CD8+ T cells through various methods. The two
+conditions in the dataset are whether AST\>40 or AST\<40. The relevance
+of the AST\>40 and AST\<40 categories in the study relates to the
+assessment of liver injury severity in chronic HBV-infected patients.
+AST (Aspartate Aminotransferase) is a liver enzyme, and its levels in
+the blood are used as an indicator of liver health. In this context,
+patients with AST levels greater than 40 units per liter (AST\>40)
+represent a group with more severe liver injury, whereas those with AST
+levels less than 40 units per liter (AST\<40) represent a less severely
+affected group. This distinction allowed the researchers to investigate
+how the severity of liver injury in chronic HBV infection influences the
+behavior and characteristics of CD161+CD8+ T cells.
+
+This dataset involves liver tissues from HBV-infected patients, meeting
+the requirement for human cell or tissue samples. It compares liver
+tissues from patients with different severities of liver injury (AST\<40
+and AST\>40). It used next-generation sequencing (NGS) by using the
+Illumina platform, and had very comprehensive gene coverage. The
+experiment includes 10 samples with biological replicates for both
+conditions (4 for AST\<40 and 6 for AST\>40), suggesting good quality.
+The dataset was made public in 2023, fitting within the ten-year recency
+requirement.
+
+This dataset was off interest to me as it is relevant to my area of
+research. I do clinical research on Liver Transplantation at the Ajmera
+transplant centre. Which is why when I searched for a dataset in the GEO
+search bar I wrote Liver Transplantation. This dataset was one of two
+that were the most recent and it met the requirements, so I selected it.
+
+Below is an image from the @liu2023increased paper showing the difference in
+tissue from AST\<40 patient i.e the patients with less severe liver injury  
+and AST\>40 patients i.e patients with more severe liver injury. So it shows
+how the tissue that was used to create out samples would look like.
+The image was created using the knitr package (@R-knitr).
+
+```{r, echo=TRUE, warning=FALSE, out.width = "400px"}
+knitr::include_graphics("image.png") 
+```
+
+# Dataset Info and Download
+
+To get the dataset from geo we use the GEOquery package (@R-GEOquery).
+
+```{r downloading dataset, eval=TRUE}
+# The accession id for the dataset
+geo_accession_id <- "GSE208637"
+
+# Inspect the supplementary file for the data 
+gds <- GEOquery::getGEO(geo_accession_id, GSEMatrix = FALSE )
+# Get a summary of how the data was uploaded 
+gds@header$summary
+```
+
+### Sample data
+
+There are 10 samples in the study, the table below will illustrate the
+name of each sample and the shortname used to represent it. The kableExtra package
+was used to visualize the samples (@R-kableExtra ).
+
+```{r, echo=TRUE,  warning=FALSE}
+# Create the 
+sample_df <- data.frame(
+  GEO_Accession = gds@gsms[["GSM6355994"]]@header[["geo_accession"]], 
+  Title = gds@gsms[["GSM6355994"]]@header[["title"]], 
+  Short_Name = gds@gsms[["GSM6355994"]]@header[["description"]], 
+  stringsAsFactors = FALSE # To keep string data as character type
+)
+
+for (row in gds@header[["sample_id"]][2:10]){
+  sample_df <- rbind(sample_df, data.frame(
+  GEO_Accession = gds@gsms[[row]]@header[["geo_accession"]], 
+  Title = gds@gsms[[row]]@header[["title"]], 
+  Short_Name = gds@gsms[[row]]@header[["description"]], 
+  stringsAsFactors = FALSE # To keep string data as character type
+))
+}
+
+# Show the different samples and the short forms used to represent them
+kableExtra::kable(sample_df, format ="html")
+```
+
+### Downloading the dataset
+
+From looking at the home page for the dataset, I know that there is only
+one file and it is the gene counts supplementary file. So what I will do
+now is get the name of the file, then download the file and ensure that
+the file is only downloaded again if it is not present
+
+```{r }
+# get the name of the supplementary file
+supplmentary_files = GEOquery::getGEOSuppFiles(geo_accession_id, fetch_files = FALSE)
+dataset_file_name <- supplmentary_files$fname
+
+# Download the dataset
+
+# save current directory
+working_dir <- file.path(getwd())
+
+# checking to see if the dataset file exists already to download file once and 
+# avoid redownloading 
+missing_files <- supplmentary_files$fname[!unlist(
+  lapply(supplmentary_files$fname, FUN=function(x){
+    file.exists( file.path(working_dir, geo_accession_id,x))}))]
+
+# Downlod the file if it has not been downloaded 
+if (length(missing_files) > 0){
+  # Get the dataset
+  supp_file = GEOquery::getGEOSuppFiles(GEO = geo_accession_id, 
+                                        filter_regex = missing_files,
+                                        baseDir = working_dir,
+                                        fetch_files = TRUE)
+}
+```
+
+### Load data and inspect it
+
+Now that we have the file downloaded, we load it into a table so we can
+check it's dimensions and start working on it.
+
+```{r}
+# Create the relative path for the downloaded dataset file
+dataset_path <- paste(working_dir,"/GSE208637/GSE208637_readcounts.txt.gz", sep = "")
+
+# read the dataset into a table
+liver_disease_data <- read.table(dataset_path, header = TRUE, check.names = TRUE)
+
+# inspect the dimensions of the dataset to check that the dataset is complete
+dim(liver_disease_data)
+
+```
+
+We see that the dataset size matches our expectations, with 56,274 genes
+and 11 rows, 1 for the genes and 10 for the 10 samples described in the
+paper. Now, we want to see if column names are descriptive enough for us
+to know which condition is represented by which column or sample.
+
+```{r }
+# check the first few rows of the dataset
+kableExtra::kable(liver_disease_data[1:10,], format ="html")
+```
+
+
+As we can see, we have 4 columns with the column titles going from L1 to
+L4, and 6 columns with titles going from H1, to H6. This falls under the
+expectation we had from the description of the dataset's samples, where
+4 samples were indicated to be AST\<40, the low AST level group or the
+group with the less severe liver injury. On the other hand the the 6
+samples were indicated to have AST\>40, the high AST level group or the
+group with higher severity of liver injury. Thus the 4 L columns
+represent the 4 AST\<40 samples and the 6 H columns represent the 6
+AST\>40 samples.
+
+# Dataset Filtering
+
+Now that we loaded in the dataset and check that everything looks good,
+we are going to filter the dataset. Since we will be using an edgeR
+workflow or protocol. It is recommended that we filter out gene rows
+that have less than 1 read per million across as many samples as there
+are in the condition with the lowest number of replicates. In our case
+it is the AST\<40 or Low condition that has 4 replicates, which is the
+lowest number of replicates. So 4 is our knockdown number or n = 4 in
+our knockdown group.
+
+### Creation of Dataset Matrix
+
+The first think we will do is convert our dataset into a matrix, where
+the gene ids or features are the rownames. This is because all elements
+in the count matrix need to be integers. 
+
+```{r}
+
+# get the list of gene ids which are in the first column of the dataset 
+dataset_rownames <- liver_disease_data[,1]
+
+# create a matrix with the count values
+dataset_matrix <- as.matrix(liver_disease_data[,2:11])
+
+# set the row names for the matrix as the gene ids
+row.names(dataset_matrix) <- dataset_rownames
+
+```
+
+### visualization of pre-filtered data
+
+Here is some some visualizations of the data before filtering. We have a
+boxplot and a counts density plot. Visualization code was adapted from BCB420 
+lectures.
+
+```{r, echo=TRUE}
+# Boxplot
+data2plot <- log2(dataset_matrix)
+boxplot(data2plot, xlab = "Samples", ylab = "log2 TPM",
+        las = 2, cex = 0.5, cex.lab = 0.5,
+        cex.axis = 0.5, main = "RNASeq Samples")
+
+#draw the median on each box plot
+abline(h = median(apply(data2plot, 2, median)),
+       col = "green", lwd = 0.6, lty = "dashed")
+
+# density plot
+counts_density <- apply(log2(dataset_matrix), 2, density)
+#calculate the limits across all the samples
+xlim <- 0; ylim <- 0
+for (i in 1:length(counts_density)) {
+xlim <- range(c(xlim, counts_density[[i]]$x));
+ylim <- range(c(ylim, counts_density[[i]]$y))
+}
+cols <- rainbow(length(counts_density))
+ltys <- rep(1, length(counts_density))
+#plot the first density plot to initialize the plot
+plot(counts_density[[1]], xlim=xlim, ylim=ylim, type="n",
+ylab="Smoothing density of log2-CPM",
+main="Pre-filtered Data", cex.lab = 0.85)
+#plot each line
+for (i in 1:length(counts_density))
+lines(counts_density[[i]], col=cols[i], lty=ltys[i])
+#create legend
+legend("topright", colnames(data2plot),
+col=cols, lty=ltys, cex=0.75,
+border ="blue", text.col = "green4",
+merge = TRUE, bg = "gray90")
+
+```
+
+### EdgeR based Filtering
+
+Now we filter the data based on the edgeR protocol from the edgeR package (@R-edgeR).
+Here we use the
+edgeR cpm function to convert the raw counts to counts per million. Then
+we only keep the rows with more than 1 count per million in at least 4
+samples. Code adapted from the paper by
+@anders2013count
+
+```{r}
+# our knockdown number
+knockdown_number <- 4
+
+# calculate the counts per million for our data matrix
+cpms <- edgeR::cpm(dataset_matrix)
+
+# find the rows we want to keep
+keep <- rowSums(cpms > 1) >= knockdown_number
+
+# Create new counts datamatrix containing data after filtering
+counts <- dataset_matrix[keep,]
+
+# inspect the new dimension of the data
+dim(counts)
+```
+
+So we are left with 16697 genes after filtering, so around 40,000 genes
+were filtered out
+
+### Checking for Duplicates
+
+```{r, echo=TRUE, warning=FALSE}
+# check if there are any duplicates
+print(any(duplicated(names(counts))))
+```
+
+As we can see there are no duplicate genes in our dataset
+
+### Post-filtering Visualization
+
+```{r, echo=TRUE, warning=FALSE}
+# Boxplot
+data2plot <- log2(counts)
+boxplot(data2plot, xlab = "Samples", ylab = "log2 TPM",
+        las = 2, cex = 0.5, cex.lab = 0.5,
+        cex.axis = 0.5, main = "Post-filtering, pre-normalization RNASeq Samples")
+
+#draw the median on each box plot
+abline(h = median(apply(data2plot, 2, median)),
+       col = "green", lwd = 0.6, lty = "dashed")
+```
+
+```{r, echo=TRUE, warning=FALSE}
+# density plot
+counts_density <- apply(log2(counts), 2, density)
+#calculate the limits across all the samples
+xlim <- 0; ylim <- 0
+for (i in 1:length(counts_density)) {
+xlim <- range(c(xlim, counts_density[[i]]$x));
+ylim <- range(c(ylim, counts_density[[i]]$y))
+}
+cols <- rainbow(length(counts_density))
+ltys <- rep(1, length(counts_density))
+#plot the first density plot to initialize the plot
+plot(counts_density[[1]], xlim=xlim, ylim=ylim, type="n",
+ylab="Smoothing density of log2-CPM",
+main="Post-filtering, pre-normalization Data", cex.lab = 0.85)
+#plot each line
+for (i in 1:length(counts_density))
+lines(counts_density[[i]], col=cols[i], lty=ltys[i])
+#create legend
+legend("topright", colnames(data2plot),
+col=cols, lty=ltys, cex=0.75,
+border ="blue", text.col = "green4",
+merge = TRUE, bg = "gray90")
+```
+
+# HGNC Mapping
+
+By manual inspection, I see that most the genes in my dataset are
+already in the HGNC identifier format. So what I will do now is use the
+HGNChelper package (@R-HGNChelper). This package will take the list of genes in my
+dataset and return whether the symbol is HGNC approved. If not it will
+let me know and provide the HGNC approved symbol for that gene if it
+finds it.
+
+### Check HGNC mapping
+
+```{r, echo=TRUE, warning=FALSE, }
+# install HGNChelper package if not installed
+if (!requireNamespace('HGNChelper', quietly = TRUE)) {
+    install.packages('HGNChelper')
+}
+
+# get the gene names from the count matrix rownames
+filtered_ds_rownames <- row.names(counts)
+
+# Check if the gene names in my dataset are HGNC approved
+checked_hgnc_symbols <- HGNChelper::checkGeneSymbols(filtered_ds_rownames)
+
+not_approved_genes <- checked_hgnc_symbols[checked_hgnc_symbols$Approved == FALSE,]
+
+# view the number of genes with non HGNC approved names
+dim(not_approved_genes)
+# View what the symbols table looks like for the non-approved genes
+head(not_approved_genes)
+```
+
+### Replace Gene Names
+
+For gene symbols that have not been approved, some of them have a
+suggested replacement symbol while most don't. So the next step will be
+to replace the non approved symbols that have a replacement.
+
+```{r, echo=TRUE, warning=FALSE}
+# get only the  non-approved genes with a suggested replacement sumbol
+rp_not_approved_genes <- checked_hgnc_symbols[checked_hgnc_symbols$Approved == FALSE &
+                                                (!is.na(checked_hgnc_symbols$Suggested.Symbol)),]
+# keep only the column with the original symbol and replacement symbol
+rp_not_approved_genes <- rp_not_approved_genes[, c(1,3)]
+
+# Get the number of genes with a replacement
+dim(rp_not_approved_genes)
+
+
+# Loop through each row of 'rp_not_approved_genes'
+for(i in 1:nrow(rp_not_approved_genes)) {
+  # Get the original gene name and the replacement gene name
+  original_gene_name <- rp_not_approved_genes[i, 1]
+  replacement_gene_name <- rp_not_approved_genes[i, 2]
+  
+  # Find the index of the original gene name in the row names of 'counts'
+  gene_index <- which(rownames(counts) == original_gene_name)
+  
+  # Replace the original gene name with the replacement gene name in 'counts'
+  if(length(gene_index) > 0) { # Only replace if the original gene name is found
+    rownames(counts)[gene_index] <- replacement_gene_name
+  }
+}
+
+# check if the replacement was successful
+all(rp_not_approved_genes$Suggested.Symbol %in% rownames(counts))
+
+```
+
+As we can see all genes with a possible HGNC replacement were replaced
+
+### Final Coverage
+
+So we replaced 475 genes with an HGNC mapping, leaving us with 2030
+unmapped genes. These genes will be kept in the dataset as many are LOC
+genes which the prof suggested we keep even though they might be lost in
+downstream analysis. So the final overall coverage of our dataset is
+16697 genes
+
+# Data Normalization
+
+### Normalization Method Selection
+
+For normalization, I have gone through the paper by @evans2018selecting
+as well as the paper by @stark2019rna in order to understand
+normalization, the underlying assumptions and the method I will be going
+with.
+
+I will be going with the Trimmed Mean of M-values normalization method.
+There are two reasons for choosing this method. The first is that for
+most normalization methods like RPKM and others, the two assumption are
+that across replicate groups expression levels stay the same and that
+there is not a significant difference in mRNA levels between sample
+groups. From my data visualizations, it does not seem that expression
+levels stay the same between replicates, and I'm not sure if mRNA levels
+stay close between groups. However, TMM has the ability to compensate a
+bit when the assumptions are not met. The second reason is that I am
+using a edgeR protocol for my development which uses TMM by default.
+
+### Carried out Normalization
+
+Below we carry out the normalization. The code used is sampled from the
+"Count-based differential expression analysis of RNA sequencing data
+using R and Bioconductor" paper
+
+```{r, echo=TRUE, warning=FALSE}
+# create edgeR DGElist datatype of our data
+edge_list <- edgeR::DGEList(counts = counts, group = colnames(counts))
+
+# calculate the normalization factors
+estimated_norm_factors = edgeR::calcNormFactors(edge_list)
+```
+
+### MDS Plot
+
+Now to view the relationship between the different samples we will plot
+a multidimensional scaling (MDS) plot from the limma package. The plot
+will show us how similar or dissimilar the samples are. The MDS plot was plotted
+using the limma package (@R-limma).
+
+```{r, echo=TRUE, warning=FALSE}
+limma::plotMDS(estimated_norm_factors, labels = colnames(counts), 
+        col = c("darkgreen", "darkgreen", "darkgreen", "darkgreen", "darkgreen", "darkgreen", "blue", "blue", "blue", "blue")[factor(colnames(counts))])
+
+legend("topright",
+legend=levels(factor(c("AST>40 (High)", "AST<40 (Low)"))),
+pch=c(1), col=
+c("darkgreen", "blue"),title="Class",
+bty = 'n', cex = 0.75)
+```
+
+
+### Normalized Counts and plots
+
+Now that we have the normalized factors, we can get the normalized
+counts and plot them
+
+```{r, echo=TRUE, warning=FALSE}
+normalized_counts <- edgeR::cpm(estimated_norm_factors)
+```
+
+```{r, echo=TRUE, warning=FALSE}
+# Boxplot of the normalized data
+data2plot <- log2(normalized_counts)
+boxplot(data2plot, xlab = "Samples", ylab = "log2 TPM",
+        las = 2, cex = 0.5, cex.lab = 0.5,
+        cex.axis = 0.5, main = "Normalized RNASeq Samples")
+
+#draw the median on each box plot
+abline(h = median(apply(data2plot, 2, median)),
+       col = "green", lwd = 0.6, lty = "dashed")
+```
+
+```{r}
+# Density plot of the normalized data
+counts_density <- apply(log2(normalized_counts), 2, density)
+# calculate the limits across all the samples
+xlim <- 0; ylim <- 0
+for (i in 1:length(counts_density)) {
+xlim <- range(c(xlim, counts_density[[i]]$x));
+ylim <- range(c(ylim, counts_density[[i]]$y))
+}
+cols <- rainbow(length(counts_density))
+ltys <- rep(1, length(counts_density))
+#plot the first density plot to initialize the plot
+plot(counts_density[[1]], xlim=xlim, ylim=ylim, type="n",
+ylab="Smoothing density of log2-CPM",
+main="Normalized Data", cex.lab = 0.85)
+#plot each line
+for (i in 1:length(counts_density))
+lines(counts_density[[i]], col=cols[i], lty=ltys[i])
+#create legend
+legend("topright", colnames(data2plot),
+col=cols, lty=ltys, cex=0.75,
+border ="blue", text.col = "green4",
+merge = TRUE, bg = "gray90")
+
+```
+
+
+# Dispesion Plots
+
+Now that we normalized the data, we will plot the dispersion plots. Dispersion 
+shows us how differing the variance and the mean are. This code was adapted from
+the normalizing our dataset BCB420 lecture.
+
+```{r, echo=TRUE, warning=FALSE}
+
+dispersion_edge_list <- edgeR::DGEList(counts = normalized_counts, genes = rownames(normalized_counts))
+
+# use the edgeR package to estimate dispersion
+estimated_dispersion <- edgeR::estimateCommonDisp(dispersion_edge_list)
+estimated_dispersion <- edgeR::estimateTagwiseDisp(estimated_dispersion)
+estimated_dispersion <- edgeR::estimateTrendedDisp(estimated_dispersion)
+
+# Plot the dispersion
+design_m <- model.matrix(~colnames(counts))
+edgeR::plotBCV(estimated_dispersion, design=design_m, col.tagwise = "black",col.common = "red")
+
+
+```
+
+# Outliers
+
+As we can see from our normalized data boxplots, most of our samples
+have outliers. However, after consideration I will not be removing any
+outliers. As per the stack exchange thread that was shared in the
+assignment page, I do not have any information that indicates that the
+outliers were a result of measurement errors and so they will be kept @Egon_2016.
+
+# References
