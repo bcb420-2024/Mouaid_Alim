@@ -524,9 +524,18 @@ estimated_dispersion <- edgeR::estimateTrendedDisp(estimated_dispersion)
 design_m <- model.matrix(~colnames(counts))
 edgeR::plotBCV(estimated_dispersion, design=design_m, col.tagwise = "black",col.common = "red")
 
-
 ```
 
+
+Now we plot the relationship between the mean and the variance of our count data.
+The function fits a model on the data depending on the nature of the count data.
+```{r}
+# Plot Mean Variance
+edgeR::plotMeanVar(estimated_dispersion, show.raw.vars = TRUE, show.tagwise.vars=TRUE,
+            show.ave.raw.vars = TRUE, NBline=FALSE,
+            show.binned.common.disp.vars = TRUE)
+
+```
 # Outliers
 
 As we can see from our normalized data boxplots, most of our samples
