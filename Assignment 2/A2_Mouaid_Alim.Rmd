@@ -27,7 +27,9 @@ chronic HBV patients, the dataset distinguished between two groups based
 on the severity of liver injury indicated by Aspartate Aminotransferase
 (AST) levels---AST\>40 representing more severe liver injury and AST\<40
 representing less severe injury. Figure 1 shows the difference in tissue
-appearance between the 2 conditions and it is derived from the dataset's orginial paper @liu2023increased. All figures in the Background section are created using the knitr package (@R-knitr).
+appearance between the 2 conditions and it is derived from the dataset's
+orginial paper @liu2023increased. All figures in the Background section
+are created using the knitr package (@R-knitr).
 
 ```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "400px", fig.align='center', fig.cap="Figure 1: Comparison of Liver tissue from HBV infected patients without liver injury (AST<40) and with Liver injury (AST>40)"}
 knitr::include_graphics("Figures/Tissue.png") 
@@ -41,7 +43,7 @@ samples, including biological replicates for both conditions, the
 dataset provided a robust basis for analysis. Below we can see a table
 showcasing the samples in the dataset and the names used for them.
 
-```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "70%", fig.cap="Table 1: Summary of the Dataset Samples, their source and status and the short_name used to represent them" }
+```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "70%", fig.align='center', fig.cap="Table 1: Summary of the Dataset Samples, their source and status and the short_name used to represent them" }
 knitr::include_graphics("Figures/Samples\ Table.png") 
 ```
 
@@ -89,7 +91,9 @@ knitr::include_graphics(c("Figures/Normalized\ boxplot.png", "Figures/Normalized
 The first thing to get started with the Differential gene expression
 analysis is to solidify the model we are working with. This will require
 us to inspect the MDS plot to see what factors are important to
-incorporate into the model. Estimating dispersion and carrying our the differential gene expression was done using the edgeR pacakge protocol (@R-edgeR)
+incorporate into the model. Estimating dispersion and carrying our the
+differential gene expression was done using the edgeR pacakge protocol
+(@R-edgeR)
 
 ## Model Design
 
@@ -201,17 +205,17 @@ estimated_norm_factors = edgeR::calcNormFactors(edge_list)
 normalized_counts <- edgeR::cpm(estimated_norm_factors)
 ```
 
-## Estimate Dispersion
+## Estimating Dispersion
 
 Before carrying out the differential expression we create a DGEList
 object to carry out and estimate the dispersion of the counts. This is
 done to as estimating dispersion is a crucial step in RNA-Seq data
 analysis for modeling the inherent variability in the data accurately.
 This step ensures that the statistical tests used to identify
-differentially expressed genes are based on realistic assumptions about
+deferentially expressed genes are based on realistic assumptions about
 the data's behavior, leading to more reliable and interpretable results.
 It is also required before carrying out differential expression using
-the negative binomia model used by edgeR.
+the negative binomial model used by edgeR.
 
 Moreover, we are setting the levels to be low_AST first meaning, we are
 setting AST\<40 or No Liver injury to tbe the base to which we will
@@ -234,15 +238,23 @@ dispersion_edge_list$design <- design
 dispersion_edge_list <- edgeR::estimateDisp(dispersion_edge_list, design)
 ```
 
+## Multiple Hypothesis Testing
+
+For Multiple Hypothesis testing or correction we used the Benjamni -
+Hochberg FDR method. This is the default and built-in method used for
+the edgeR protocol and is quite a reliable which is why it was chosen.
+
 ## Carrying Out Differential Expression
 
-To carry out differential expression we use the Quasi Liklihood fit
+To carry out differential expression we use the Quasi Likelihood fit
 model as it is the best for Bulk RNAseq data. First we fit the data into
-the QLfit model and then we run the gene expressoin analysis on it. We
+the QLfit model and then we run the gene expression analysis on it. We
 set the coef as groupshigh_AST. This ensures that we are comparing the
 control or AST\<40/No liver injury group which is taken as the default
 to the AST\>40/Liver injury group. We then use topTags to extract the
-results of the differential expression analysis. Kable was used to plot produce the table of results (@R-kableExtra), edgeR was used for coming up with the topTags (@R-edgeR).
+results of the differential expression analysis. Kable was used to plot
+produce the table of results (@R-kableExtra), edgeR was used for coming
+up with the topTags (@R-edgeR).
 
 ```{r, echo=TRUE, warning=FALSE, error=FALSE}
 # Fit data into Quasi Liklihood fit model
@@ -270,9 +282,10 @@ method for multiple hypothesis testing.
 
 When selecting a threshold we want to set one that filters out enough of
 the genes so that we are only left with the top hits and most relevant
-and differentially expressed genes. We will start with the high
+and deferentially expressed genes. We will start with the high
 recommended P-value of 0.05 and adjust accordingly. Below we see the
-number of genes passed the intially set P-value Threshold
+number Significantly deferentially expressed genes passed the initially
+set P-value Threshold
 
 ```{r, echo=TRUE, warning=FALSE, error=FALSE}
 # Genes that pass the threshold p-value
@@ -282,11 +295,12 @@ sprintf("There are %d genes that pass the threshold p-value of 0.05", length(whi
 sprintf("There are %d genes that pass correction with a threshold of 0.05", length(which(qlf_output_hits$table$FDR < 0.05)))
 ```
 
-Due to the large number of genes that pass the threshold, I set the threshold to be a
-stringent 0.000001 to ensure only a couple hundred genes pass the
-threshold and so that we only get the top and most important hits. Below
-we see the number of genes that passed both the threshold p-value before
-and after correction.
+Due to the large number of genes that pass the threshold, I set the
+threshold to be a stringent 0.000001 to ensure only a couple hundred
+genes pass the threshold and so that we only get the top and most
+important hits. Below we see the number of significanlty deferentially
+expressed genes that passed both the threshold p-value before and after
+correction.
 
 ```{r, echo=TRUE, warning=FALSE, error=FALSE}
 # Genes that pass the threshold p-value
@@ -297,8 +311,8 @@ sprintf("There are %d Genes that passed correction with the more stringent thres
 length(which(qlf_output_hits$table$FDR < 0.000001)))
 ```
 
-This is a good enough value for the number of genes passing correction so
-we are going with this threshold value.
+This is a good enough value for the number of genes passing correction,
+as discussed with the prof so we are going with this threshold value.
 
 ## MA plot
 
@@ -339,9 +353,13 @@ the biological significance of these differences, and helps in
 identifying patterns that might be relevant for understanding the
 condition or disease under study. Below we can see significant
 difference in expression of genes between the samples with almost no
-overlap of expression. This shows us noticeable gene profiles in the two
-tissue types. 
-Heat maps created using ComplexHeatmap package (@ComplexHeatmap_2022). Heatmap matrix annotated using circlize package (Circlize_2014).
+overlap of expression. This shows us noticeable clustering and unique
+gene profiles in the two tissue types that distinguish each condition.
+This indicates that the tissue from the two conditions is biologically
+distinct which reflects the underlying pathophysiological changes
+associated with liver injury. Heat maps created using ComplexHeatmap
+package (@ComplexHeatmap_2022). Heatmap matrix annotated using circlize
+package (Circlize_2014).
 
 ```{r, echo=TRUE, warning=FALSE, error=FALSE}
 # Get the dataframe with the expression results for the signnificant genes
@@ -392,9 +410,10 @@ current_heatmap
 ```
 
 **Figure 5:** The heatmap showcasing the difference in expression
-between the two conditions (Low AST<40 and High AST>40), and the samples L1-L4 and H1-H6.
+between the two conditions (Low AST\<40 and High AST\>40), and the
+samples L1-L4 and H1-H6.
 
-# Thresholded over-representation analysis
+# Thresholded Over-Representation Analysis
 
 Next we carried out Thresholded over-representation analysis or Gene Set
 Enrichment Analysis (GSEA). This analysis is conducted to help us
@@ -404,7 +423,7 @@ it reveals what processes or functions are overrepresented in our
 dataset, suggesting the biological themes that our genes are involved
 in.
 
-## Upregulated and Down Regulated genes
+## Upregulated and Down Regulated Genes
 
 By looking at the genes that pass our previously set threshold for
 correction and looking at whether their logFC or Log Fold Count values
@@ -446,14 +465,14 @@ down_regulated_significant_genes <- row.names(subset(significant_genes_df, logFC
 ## Carrying Out The Enrichment Analysis
 
 To conduct the gene set enrichment analysis the gprofiler2 package was
-used (cite). I ran the query on the whole list of significant genes before
-restricting the size of gene sets in the results and after restircting
-the size of the gene sets in the results. The significant argument was
-set to TRUE so that only gene sets that meet our set threshold will be
-returned. Ordered Query is set to false as the query list is not
-ordered. I used our previous threshold of 0.000001
+used (cite). I ran the query on the whole list of significant genes
+before restricting the size of gene sets in the results and after
+restircting the size of the gene sets in the results. The significant
+argument was set to TRUE so that only gene sets that meet our set
+threshold will be returned. Ordered Query is set to false as the query
+list is not ordered. I used our previous threshold of 0.000001
 
-### Annotation sources
+### Annotation Sources
 
 For the annotation sources I used GO biological process (<GO:BP>),
 WikiPathways (WP) and Reactome (Reac). I used them as they are excellent
@@ -463,8 +482,11 @@ scientific community. They are all frequently updated making them
 reliable sources. The integration of results across these three
 databases enhances the reliability of the findings and provides a robust
 framework for interpreting the biological implications of genomic data.
+By not specifying the versions of the annotation sources, the g:profiler
+function automatically uses the lastest versions of the annotations
+sources.
 
-### Non-size Restricted All significant Genes GSEA
+### Non-size Restricted All Significant Genes GSEA
 
 Below is the code for the gene enrichment analysis for the whole gene
 list. The results of the gene enrichment can be seen in the Table below.
@@ -476,7 +498,9 @@ the results for each data source. The number of genes in each gene set
 is represented by the size of the dot representing that gene set so a
 bigger dot is a larger sized gene set.
 
-Tables are produced using the kable package (@R-kableExtra) and plot of enrichment analysis created using gprofiler2 package (@gprofiler2_2020)
+Tables are produced using the kable package (@R-kableExtra) and plot of
+enrichment analysis created using gprofiler2 package (@gprofiler2_2020)
+
 ```{r, echo=TRUE, warning=FALSE, error=FALSE}
 # Ensure the gprofiler2 package is installed
 if (!requireNamespace("gprofiler2", quietly = TRUE)) {
@@ -500,7 +524,10 @@ kableExtra::kable(whole_gene_results$result[, c("term_name", "p_value", "term_si
 
 ```
 
-**Table 3:** The above table showcases the Term names, term_sizes or gene set sizes, P-value associated with the gene set and source of the gene set for the All significant genes GSEA results before size restriction.
+**Table 3:** The above table showcases the Term names, term_sizes or
+gene set sizes, P-value associated with the gene set and source of the
+gene set for the All significant genes GSEA results before size
+restriction.
 
 ```{r, echo=TRUE, warning=FALSE, error=FALSE}
 # plot enrichment whole gene list enrichment analysis 
@@ -511,9 +538,11 @@ enrich_plot_with_title <- enrich_plot + ggplot2::ggtitle("All significant Genes 
 enrich_plot_with_title
 ```
 
-**Figure 6:** The above figure show the plot of the Gene Set Enrichment Analysis results. The dot colours signify which source the gene sets are coming from. The size of the dots represent the size of the gene sets.
+**Figure 6:** The above figure show the plot of the Gene Set Enrichment
+Analysis results. The dot colours signify which source the gene sets are
+coming from. The size of the dots represent the size of the gene sets.
 
-### Size Restricted All significant Genes GSEA
+### Size Restricted All Significant Genes GSEA
 
 Despite the initial number of gene set results not being particularly
 high, I decided to apply restrictions on the size of these gene sets for
@@ -541,7 +570,9 @@ kableExtra::kable(whole_gene_results$result[, c("term_name", "p_value", "term_si
 
 ```
 
-**Table 4:** The above table showcases the Term names, term_sizes or gene set sizes, P-value associated with the gene set and source of the gene set for the size restricted All genes GSEA results.
+**Table 4:** The above table showcases the Term names, term_sizes or
+gene set sizes, P-value associated with the gene set and source of the
+gene set for the size restricted All genes GSEA results.
 
 Due to size restriction the number of gene sets in the whole significant
 gene list GSEA went from 7 to 6 removing very broad biological pathways.
@@ -560,7 +591,10 @@ the default here.
 
 ### Upregulated GSEA
 
-Below is the code for the upregulated genes GSEA. After it we display a table to showcase the top 10 gene sets by significance in P-value. The term_name lets us know the most significant and relevant biological pathways in the upregulated GSEA results. 
+Below is the code for the upregulated genes GSEA. After it we display a
+table to showcase the top 10 gene sets by significance in P-value. The
+term_name lets us know the most significant and relevant biological
+pathways in the upregulated GSEA results.
 
 ```{r, echo=TRUE, warning=FALSE, error=FALSE}
 # Conduct gene enrichment analysis
@@ -585,11 +619,16 @@ kableExtra::kable(upregulated_genes_results$result[1:10, c("term_name", "p_value
 
 ```
 
-**Table 5: ** The above table showcases the Term names, term_sizes or gene set sizes, P-value associated with the gene set and source of the gene set for the size upregulated genes GSEA results
+**Table 5:** The above table showcases the Term names, term_sizes or
+gene set sizes, P-value associated with the gene set and source of the
+gene set for the size upregulated genes GSEA results
 
 ### Down Regulated GSEA
 
-Below is the code for the down regulated genes GSEA. After it we display a table to showcase the top 10 gene sets by significance in P-value. The term_name lets us know the most significant and relevant biological pathways in the down regulated GSEA results. 
+Below is the code for the down regulated genes GSEA. After it we display
+a table to showcase the top 10 gene sets by significance in P-value. The
+term_name lets us know the most significant and relevant biological
+pathways in the down regulated GSEA results.
 
 ```{r, echo=TRUE, warning=FALSE, error=FALSE}
 # Conduct gene enrichment analysis
@@ -613,29 +652,130 @@ kableExtra::kable(down_regulated_genes_results$result[1:10, c("term_name", "p_va
 
 ```
 
-**Table 6:** The above table showcases the Term names, term_sizes or gene set sizes, P-value associated with the gene set and source of the gene set for the size down regulated genes GSEA results
+**Table 6:** The above table showcases the Term names, term_sizes or
+gene set sizes, P-value associated with the gene set and source of the
+gene set for the size down regulated genes GSEA results
 
-## Analysis Comparison (Whole Gene List vs upregulated vs downregulated)
+## Analysis Comparison (Whole Gene List vs Upregulated vs Downregulated)
 
-The Gene Set Enrichment Analysis (GSEA) provides a distinct overview of the biological processes implicated in High AST>40 versus Low AST<40 conditions through the evaluation of all significant genes and the subsets of upregulated and downregulated genes. 
+The Gene Set Enrichment Analysis (GSEA) provides a distinct overview of
+the biological processes implicated in High AST\>40 versus Low AST\<40
+conditions through the evaluation of all significant genes and the
+subsets of upregulated and downregulated genes.
 
-When looking at the overall significant genes the GSEA identifies 6 gene sets. However, it identifies 20+ gene sets for both the up and down regulated genes GSEA results. So quite a smaller number of gene sets in the results of the overall significant genes GSEA
+When looking at the overall significant genes the GSEA identifies 6 gene
+sets. However, it identifies 20+ gene sets for both the up and down
+regulated genes GSEA results. So quite a smaller number of gene sets in
+the results of the overall significant genes GSEA
 
-For the upregulated genes in the High AST>40 samples, the GSEA reveals enrichment in immune system-related processes, including B cell mediated immunity and complement system activation. This suggests a heightened immune response or activation of immune pathways in the context of higher AST levels.
+For the upregulated genes in the High AST\>40 samples, the GSEA reveals
+enrichment in immune system-related processes, including B cell mediated
+immunity and complement system activation. This suggests a heightened
+immune response or activation of immune pathways in the context of
+higher AST levels.
 
-In contrast, the downregulated genes in the High AST>40 samples exhibit enrichment in a variety of metabolic processes, including organic acid, carboxylic acid, and amino acid metabolic processes. The downregulation of these genes points to a potential suppression or disruption of metabolic pathways in patients with higher AST levels.
+In contrast, the downregulated genes in the High AST\>40 samples exhibit
+enrichment in a variety of metabolic processes, including organic acid,
+carboxylic acid, and amino acid metabolic processes. The downregulation
+of these genes points to a potential suppression or disruption of
+metabolic pathways in patients with higher AST levels.
 
-Finally, the narrower range of biological processes for the overall significant genes GSEA are primarily metabolic in nature. This highlights key metabolic activities that may be broadly affected by AST levels but does not show the immune component that distinguishes the upregulated genes.
-
+Finally, the narrower range of biological processes for the overall
+significant genes GSEA are primarily metabolic in nature. This
+highlights key metabolic activities that may be broadly affected by AST
+levels but does not show the immune component that distinguishes the
+upregulated genes.
 
 # Interpretation
 
 ## Do the over-representation results support conclusions or mechanism discussed in the original paper?
 
-Yes, the over-representation results do support the conslusions that the authors of the original paper reached. They mainly focused on the upregulation of immune response related genes such as IL1β and IL8 which play roles in chemotaxis and activation of neutrophils (@liu2023increased). Although these genes were removed when we made our threshold more stringent to get a lower number of genes that pass correction, the over-representation results for the upregulated genes show that most of the top hits have do with the immune system and immune responses as a whole. 
+Yes, the over-representation results do support the conslusions that the
+authors of the original paper reached. They mainly focused on the
+upregulation of immune response related genes such as IL1β and IL8 which
+play roles in chemotaxis and activation of neutrophils
+@liu2023increased. Although these genes were removed when we made our
+threshold more stringent to get a lower number of genes that pass
+correction, the over-representation results for the upregulated genes
+show that most of the top hits have do with the immune system and immune
+responses as a whole.
 
 ## Supporting Evidence
 
-This is supported by papers such as that by Polyak et al. (@polyak2001elevated) that show that il8 gene plays a role in the recruiting of neutrophils (an immune pathways related response) to exacerbate inflammation-mediated liver injury. Thus, are results are correct in suggesting that the upregulated genes in the High AST>40 group of samples would have the most relevant biological pathways or gene sets be.
+This is supported by papers such as that by @polyak2001elevated that
+show that il8 gene plays a role in the recruiting of neutrophils (an
+immune pathways related response) to exacerbate inflammation-mediated
+liver injury. Thus, are results are correct in suggesting that the
+upregulated genes in the High AST\>40 group of samples would have the
+most relevant biological pathways or gene sets be.
 
-# References 
+# Assignment Handout Question Links
+
+I will provide the questions in the rubric and the link to the
+section/subsection where the question is addressed.
+
+**Differential Gene Expression Questions:**
+
+1.  Calculate p-values for each of the genes in your expression set. How
+    many genes were significantly differentially expressed? What
+    thresholds did you use and why?
+
+    [Threshold Selection]
+
+2.  Multiple hypothesis testing - correct your p-values using a multiple
+    hypothesis correction method. Which method did you use? And Why? How
+    many genes passed correction?\
+    [Multiple Hypothesis Testing] & [Threshold Selection]
+
+3.   Show the amount of deferentially expressed genes using an MA Plot
+    or a Volcano plot. Highlight genes of interest. \
+    \
+    [MA plot]
+
+4.  Visualize your top hits using a heatmap. Do you conditions cluster
+    together? Explain why or why not.
+
+    [Heat Map]
+
+**Thresholded over-representation analysis:**
+
+1.  Which method did you choose and why?
+
+    [Selecting GSEA tool]
+
+2.  What annotation data did you use and why? What version of the
+    annotation are you using?
+
+    [Annotation Sources]
+
+3.  How many genesets were returned with what thresholds?
+
+    [Non-size Restricted All Significant Genes GSEA] & [Size Restricted
+    All Significant Genes GSEA]
+
+4.  Run the analysis using the up-regulated set of genes, and the
+    down-regulated set of genes separately. How do these results compare
+    to
+    using the whole list (i.e all differentially expressed genes
+    together
+    vs. the up-regulated and down regulated differentially expressed
+    genes
+    separately)
+
+    [Up and Down Regulated Genes GSEA] & [Analysis Comparison (Whole
+    Gene List vs Upregulated vs Downregulated)]
+
+**Interpretation:**
+
+1.  Do the over-representation results support conclusions or mechanism
+    discussed in the original paper?\
+    \
+    [Do the over-representation results support conclusions or mechanism
+    discussed in the original paper?]
+
+2.  Can you find evidence, i.e. publications, to support some of the
+    results that you see. How does this evidence support your results.
+
+    [Supporting Evidence]
+
+# References
