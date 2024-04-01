@@ -1,0 +1,85 @@
+---
+title: "Homework 5: GSEA"
+author: "Mouaid Alim"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    fig_caption: yes
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+To begin we need to load the Rcurl library that will enable us to get the GMT file
+
+```{r load libraries}
+#install required R and bioconductor packages
+tryCatch(expr = { library("RCurl")}, 
+         error = function(e) {  
+           install.packages("RCurl")}, 
+         finally = library("RCurl"))
+```
+
+Set path to GSEA jar file
+```{r Set GSEA tool path}
+
+# Set the path to the GSEA jar file
+gsea_jar <- "~/projects/GSEA_4.3.3/gsea-cli.sh"
+```
+
+Next we need to set up the correct directories to store our data, gmt files, and results
+```{r}
+
+
+#path for working directory where all the data files are found.  
+working_dir <- "~/projects/Homeworks/Homework5/data/"
+
+# Create output directory if not found
+if (!dir.exists(working_dir)) {
+    dir.create(working_dir, recursive = TRUE)
+}
+
+# path for output directory where all the data files are found.  
+output_dir <- "~/projects/Homeworks/Homework5/generated_data/gsea"
+
+# Create output directory if not found
+if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+}
+
+# The name to give the analysis in GSEA
+analysis_name <- "Mesenchymal_vs_Immunoreactive"
+
+# The name of the rank file to use in GSEA analysis.  
+rnk_file <- "~/projects/Homeworks/Homework5/data/MesenvsImmuno_RNASeq_ranks.rnk"
+
+# Below we set the GMT file we want to use, here we use the Bader Labs GMT file from 
+# from match 1st 2024. We will download this file manually
+dest_gmt_file = file.path(output_dir, 
+                          "Human_GOBP_AllPathways_noPFOCR_no_GO_iea_March_01_2024_symbol.gmt")
+```
+
+After manually downloading the gmt file we now run the gsea analysis 
+
+```{r GSEA analysis}
+run_gsea <- TRUE
+  
+if(run_gsea){command <- paste(
+    gsea_jar,
+    "GSEAPreRanked -gmx",
+    dest_gmt_file,
+    "-rnk",
+    rnk_file,
+    "-collapse false -nperm 1000 -scoring_scheme weighted",
+    "-rpt_label ",
+    "Mesen_vs_Immuno",
+    "  -plot_top_x 20 -rnd_seed 12345  -set_max 200",
+    " -set_min 15 -zip_report false ",
+    " -out",
+    output_dir,
+    " > gsea_output.txt",
+    sep = " "
+)
+  system(command)
+}
+```
