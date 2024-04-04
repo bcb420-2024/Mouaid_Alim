@@ -314,7 +314,7 @@ project. Below we will be following the protocol for automatic download
 of the GMT file from the Bader Lab GSEA module 5 @merico2010enrichment.
 To download the GMT file I used the RCurl package @RCurl
 
-```{r, echo=FALSE, warning=FALSE, error=FALSE}
+```{r, echo=TRUE, results='hide', warning=FALSE, error=FALSE}
 tryCatch(expr = { library("RCurl")}, 
          error = function(e) {  
            install.packages("RCurl")}, 
@@ -372,7 +372,7 @@ the maximum gene set size to 200 to prevent overly broad interpretations
 from excessively large gene sets, which can dilute specific biological
 insights.
 
-```{r, echo=FALSE, warning=FALSE, error=FALSE}
+```{r, echo=TRUE, results='hide', warning=FALSE, error=FALSE}
 
 # The name to give the analysis in GSEA
 analysis_name <- "Liver_injury_vs_No_Liver_injury"
