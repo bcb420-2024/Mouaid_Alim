@@ -355,7 +355,7 @@ if (!file.exists(dest_gmt_file)) {
     )
 }
 } else {
-  ddest_gmt_file <-"generated_data/gsea/Human_GOBP_AllPathways_noPFOCR_no_GO_iea_March_01_2024_symbol.gmt"
+  dest_gmt_file <-"generated_data/gsea/Human_GOBP_AllPathways_noPFOCR_no_GO_iea_March_01_2024_symbol.gmt"
 }
 ```
 
