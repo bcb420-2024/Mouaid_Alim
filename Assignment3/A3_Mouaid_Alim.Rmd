@@ -112,7 +112,7 @@ regulated genes individually limiting gene set sizes to be between 5 and
 most relevant gene sets and their pathways for the 3 separate ORAs
 carried out.
 
-```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "50%", fig.show='hold', fig.cap="Figure 5: Visualization of Thresholded Over-Representation Analysis. Top Left = All Significant Genes ORA, Top Right = Upregulated Genes ORA, Bottom  = Down Regulated Genes ORA"}
+```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "50%", fig.show='hold', fig.cap="Figure 5: Visualization of Thresholded Over-Representation Analysis results showcasing the top most relevant gene sets for the three ORAs. Top Left = All Significant Genes ORA, Top Right = Upregulated Genes ORA, Bottom  = Down Regulated Genes ORA"}
 knitr::include_graphics(c("Figures/all_genes_ORA.png", "Figures/upreg_genes_ORA.png", "Figures/downreg_genes_ORA.png"))
 ```
 
@@ -330,6 +330,7 @@ if (!dir.exists(output_dir)) {
 # We set the link to the bader gene set that we want 
 gmt_url <- "https://download.baderlab.org/EM_Genesets/March_01_2024/Human/symbol/"
 
+if (!file.exists(file.path(getwd(), output_dir, "Human_GOBP_AllPathways_noPFOCR_no_GO_iea_March_01_2024_symbol.gmt"))) {
 filenames <-  RCurl::getURL(gmt_url)
 tc <- textConnection(filenames)
 contents <- readLines(tc)
@@ -353,6 +354,9 @@ if (!file.exists(dest_gmt_file)) {
         destfile = dest_gmt_file
     )
 }
+} else {
+  ddest_gmt_file <-"generated_data/gsea/Human_GOBP_AllPathways_noPFOCR_no_GO_iea_March_01_2024_symbol.gmt"
+}
 ```
 
 ## Carry out GSEA
@@ -371,12 +375,16 @@ insights.
 ```{r, echo=FALSE, warning=FALSE, error=FALSE}
 
 # The name to give the analysis in GSEA
-analysis_name <- "No_Liver_injury_vs_No_Liver_injury"
+analysis_name <- "Liver_injury_vs_No_Liver_injury"
 
 # path to GSEA jar file
 gsea_jar <- "GSEA_4.3.3/gsea-cli.sh"
 
-run_gsea <- TRUE
+# Check if GSEA has been run before
+run_gsea <- !file.exists(file.path(getwd(),"generated_data/gsea", 
+                                   list.files(path = file.path(getwd(),"generated_data/gsea"),
+                                              pattern = ".GseaPreranked")[1]))
+
 
 # Run GSEA
 if(run_gsea){command <- paste(
@@ -387,7 +395,7 @@ if(run_gsea){command <- paste(
     rnk_file,
     "-collapse false -nperm 1000 -scoring_scheme weighted",
     "-rpt_label ",
-    "No_Liver_injury_vs_No_Liver_injury",
+    "Liver_injury_vs_No_Liver_injury",
     "  -plot_top_x 20 -rnd_seed 12345  -set_max 200",
     " -set_min 15 -zip_report false ",
     " -out",
@@ -449,13 +457,18 @@ how overrepresented a gene set in the ranked gene list, the normalized
 ES that allows us to compare overrepresentation across gene sets of
 different sizes, the P-value which tells us the whether the ES score we
 are seeing is significant, and FDR value which correction value that
-tells us the confidence in the truth of the result.
+tells us the confidence in the truth of the result. We can see from
+these results that the top gene sets enriched in the Liver injury/AST \>
+40 samples all had to do with immune response while the top gene sets
+enriched in the No Liver injury/AST \< 40, all had to do with normal
+Liver function such as catabolic processes, metabolic processes, etc.
 
-```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "50%", fig.show='hold', fig.cap="Table 2: GSEA results for Top 10 gene sets enriched in Liver Injury/AST > 40 samples "}
+```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "100%", fig.show='hold', fig.cap="Table 2: GSEA results for Top 10 gene sets enriched in Liver Injury/AST > 40 samples. GS is the Gene set, Size is the size of the gene set, ES is the Enrichment Score, NES is the Normalize Enrichment Score"}
 knitr::include_graphics(c("Figures/GSEA_up_results.png"))
 ```
 
-```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "50%", fig.show='hold', fig.cap="Table 3: GSEA results for Top 10 gene sets enriched in No Liver Injury/AST < 40 samples "}
+
+```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "100%", fig.show='hold', fig.cap="Table 3: GSEA results for Top 10 gene sets enriched in No Liver Injury/AST < 40 samples. GS is the Gene set, Size is the size of the gene set, ES is the Enrichment Score, NES is the Normalize Enrichment Score "}
 knitr::include_graphics(c("Figures/GSEA_down_results.png"))
 ```
 
@@ -479,7 +492,7 @@ using an Enrichment Map. To carry this out we used the
 @shannon2003cytoscape software. We use cytoscape because it is
 particularly good at creating enrichment maps as it can integrate
 various types of attribute data (like gene expression profiles and
-phenotypic signatures) and visualize the interconnectedness and
+condition signatures) and visualize the interconnectedness and
 relationships between large sets of genes, highlighting enriched
 pathways and clusters within biological networks. All figures in this
 section are visualized using the knitr package (@R-knitr).
@@ -490,10 +503,11 @@ For my Base enrichment map before annotation, I used an FDR threshold of
 0.000001, as the number of genes was very large and so we wanted only
 the most relevant and significant genes and pathways to be highlighted.
 There were 94 nodes and 456 edges. There are various evident clusters
-for both the upregulated and down regulated gene set pathways.
+for gene set pathways enriched in both the Liver injury and No Liver
+injury samples.
 
-```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "50%", fig.show='hold', fig.cap="Figure 6: Base Enrichment Map without annotations"}
-knitr::include_graphics(c("Figures/Enrichment_Map.png"))
+```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "200%", fig.show='hold', fig.cap="Figure 6: Base Enrichment Map without annotations showcasing what the enrichment map gene set network looks like for the pathways that passed out threshold of 0.000001. Red gene sets are enriched in the Liver injury samples and Blue are enriched in the No Liver injury samples"}
+knitr::include_graphics(c("Figures/New_Enrichment_Map.png"))
 ```
 
 ### 2. Annotate your network - what parameters did you use to annotate the network. If you are using the default parameters make sure to list them as well.
@@ -516,13 +530,14 @@ To annotate the network I used the GSEA AutoAnnotate App in cytoscape
 -   Min Word Occurrence: 1
 
 Below we can see annotated enrichment Map. We can see that 10 clusters
-were highlighted. The largest cluster contained 27 upregulated gene sets
-related to the mediated mapk activation pathways. The second largest
-cluster contained 14 down regulated gene sets related to the amino acid
-catabolic pathways. The rest of the clusters and their pathways can be
-seen as well. Moreover this is a publication ready figure
+were highlighted. The largest cluster contained 27 gene sets enriched in
+the Liver Injury samples related to the mediated mapk activation
+pathways. The second largest cluster contained 14 gene sets enriched in
+the No Liver Injury samples related to the amino acid catabolic
+pathways. The rest of the clusters and their pathways can be seen as
+well. Moreover this is a publication ready figure
 
-```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "50%", fig.show='hold', fig.cap="Figure 7: GSEA Enrichment Map after AutoAnnotation and Labelling. Also a publication grade figure "}
+```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "80%", fig.show='hold', fig.cap="Figure 7: GSEA Enrichment Map after AutoAnnotation and Labelling showing the different clusters that the auotannotation algorithim found and created by grouping the gene sets. Red gene sets are enriched in the Liver injury samples and Blue are enriched in the No Liver injury samples. Also a publication grade figure "}
 knitr::include_graphics(c("Figures/Annotated_Enrichment_Map.svg"))
 ```
 
@@ -534,7 +549,7 @@ in the svg format and it also has a proper legend and title.
 ### 4. Collapse your network to a theme network. What are the major themes present in this analysis? Do they fit with the model? Are there any novel pathways or themes?
 
 Below we can see the collapsed Network. To Collapse the Network we used
-the Summary Netowork feature of Cytoscape. We can see that the cluster
+the Summary Network feature of Cytoscape. We can see that the cluster
 pathways are the same ones seen in the previous figure The largest
 cluster is a cluster of Liver injury gene sets called mediated mapk
 activation, while the second largest cluster was a cluster of No Liver
@@ -548,7 +563,7 @@ cell proliferation, differentiation, motility, and survival
 @cargnello2011activation. We can see that collapsing did not add any
 novel pathways or themes from the previous figure.
 
-```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "50%", fig.show='hold', fig.cap="Figure 8: GSEA Enrichment Map after AutoAnnotation and Labelling. Also a publication grade figure "}
+```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "80%", fig.show='hold', fig.cap="Figure 8: Collapsed GSEA Enrichment Map after AutoAnnotation and Labelling showcasing the makor themes of the enrichment map and generated using the Summary Network feature. Red gene set/clusters are enriched in the Liver injury samples and Blue gene sets/clusters are enriched in the No Liver injury samplesAlso a publication grade figure "}
 knitr::include_graphics(c("Figures/Theme-Annotate - Summary Network.svg"))
 ```
 
@@ -596,7 +611,7 @@ interlukin. Below you can view the gene network of this pathway created
 using GeneMANIA in cytoscape. Figure visualized using the knitr package
 (@R-knitr).
 
-```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "50%", fig.show='hold', fig.cap="Figure 9: Gene Network of the pathway of interst, the FCGR3A-MEDIATED IL10 SYNTHESIS Pathway"}
+```{r, echo=FALSE, warning=FALSE, error=FALSE, out.width = "80%", fig.show='hold', fig.cap="Figure 9: Gene Network of the pathway of interst, the FCGR3A-MEDIATED IL10 SYNTHESIS Pathway. The figure shows the gene Network where each node represents a gene. Reder genes are more enriched in the Liver injury samples and Blue genes are more enriched in the No Liver injury samples. Grey Genes were not present in our gene list. Genes in our gene list have their LogFC and PValues next to their gene names"}
 knitr::include_graphics(c("Figures/Pathway_of_Interest.svg"))
 ```
 
